@@ -11,7 +11,8 @@
 #ifdef _WIN32
 #include <windows.h>
 
-double sec(){
+double sec()
+{
     LARGE_INTEGER frequency, t;
     QueryPerformanceCounter(&t);
     QueryPerformanceFrequency(&frequency);
@@ -20,10 +21,11 @@ double sec(){
 #else
 #include <time.h>
 
-double sec(){
+double sec()
+{
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
-    return t.tv_sec + 1e-9*t.tv_nsec;
+    return t.tv_sec + 1e-9 * t.tv_nsec;
 }
 #endif
 
@@ -39,48 +41,57 @@ float vorticity = 10.0f;
 
 vec2f mouse;
 
-void draw(const vec2f *data, int n, GLenum mode){
+void draw(const vec2f *data, int n, GLenum mode)
+{
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 0, data);
     glDrawArrays(mode, 0, n);
 }
 
-void draw_circle(float x, float y, float r, int n = 100){
+void draw_circle(float x, float y, float r, int n = 100)
+{
     vec2f pos[n];
-    for (int i = 0; i < n; i++){
-        float angle = 2.0f*3.14159f*i/n;
-        pos[i] = vec2f{x, y} + r*polar(angle);
+    for (int i = 0; i < n; i++)
+    {
+        float angle = 2.0f * 3.14159f * i / n;
+        pos[i] = vec2f{x, y} + r * polar(angle);
     }
     draw(pos, n, GL_LINE_LOOP);
 }
 
 template <typename T>
-struct Grid {
+struct Grid
+{
     T *values;
     int nx, ny;
 
-    Grid(int nx, int ny): nx(nx), ny(ny){
-        values = new T[nx*ny];
+    Grid(int nx, int ny) : nx(nx), ny(ny)
+    {
+        values = new T[nx * ny];
     }
 
-    Grid(const Grid&) = delete;
-    Grid& operator = (const Grid&) = delete;
+    Grid(const Grid &) = delete;
+    Grid &operator=(const Grid &) = delete;
 
-    ~Grid(){
+    ~Grid()
+    {
         delete[] values;
     }
 
-    void swap(Grid &other){
+    void swap(Grid &other)
+    {
         std::swap(values, other.values);
         std::swap(nx, other.nx);
         std::swap(ny, other.ny);
     }
 
-    const T* data() const {
+    const T *data() const
+    {
         return values;
     }
 
-    int idx(int x, int y) const {
+    int idx(int x, int y) const
+    {
         //x = clamp(x, 0, nx - 1);
         //y = clamp(y, 0, ny - 1);
 
@@ -88,14 +99,16 @@ struct Grid {
         x = (x + nx) % nx;
         y = (y + ny) % ny;
 
-        return x + y*nx;
+        return x + y * nx;
     }
 
-    T& operator () (int x, int y){
+    T &operator()(int x, int y)
+    {
         return values[idx(x, y)];
     }
 
-    const T& operator () (int x, int y) const {
+    const T &operator()(int x, int y) const
+    {
         return values[idx(x, y)];
     }
 };
@@ -110,19 +123,25 @@ Grid<uint32_t> pixels(nx, ny);
 
 GLuint texture;
 
-#define FOR_EACH_CELL for (int y = 0; y < ny; y++) for (int x = 0; x < nx; x++)
+#define FOR_EACH_CELL            \
+    for (int y = 0; y < ny; y++) \
+        for (int x = 0; x < nx; x++)
 
-void check_gl(int line){
+void check_gl(int line)
+{
     int error = glGetError();
-    if (error != GL_NO_ERROR){
+    if (error != GL_NO_ERROR)
+    {
         printf("OpenGL ERROR line %i: %s\n", line, gluErrorString(error));
     }
 }
 
 #define CHECK_GL check_gl(__LINE__);
 
-void init(){
-    FOR_EACH_CELL {
+void init()
+{
+    FOR_EACH_CELL
+    {
         old_density(x, y) = 0.0f;
         old_velocity(x, y) = vec2f{0.0f, 0.0f};
     }
@@ -141,7 +160,8 @@ void init(){
 }
 
 template <typename T>
-T interpolate(const Grid<T> &grid, vec2f p){
+T interpolate(const Grid<T> &grid, vec2f p)
+{
     int ix = floorf(p.x);
     int iy = floorf(p.y);
     float ux = p.x - ix;
@@ -149,139 +169,145 @@ T interpolate(const Grid<T> &grid, vec2f p){
     return lerp(
         lerp(grid(ix + 0, iy + 0), grid(ix + 1, iy + 0), ux),
         lerp(grid(ix + 0, iy + 1), grid(ix + 1, iy + 1), ux),
-        uy
-    );
+        uy);
 }
 
-void advect_density(){
-    FOR_EACH_CELL {
-        vec2f pos = v2f(x, y) - dt*old_velocity(x, y);
-        new_density(x, y) =  interpolate(old_density, pos);
+void advect_density()
+{
+    FOR_EACH_CELL
+    {
+        vec2f pos = v2f(x, y) - dt * old_velocity(x, y);
+        new_density(x, y) = interpolate(old_density, pos);
     }
     old_density.swap(new_density);
 }
 
-void advect_velocity(){
-    FOR_EACH_CELL {
-        vec2f pos = v2f(x, y) - dt*old_velocity(x, y);
-        new_velocity(x, y) =  interpolate(old_velocity, pos);
+void advect_velocity()
+{
+    FOR_EACH_CELL
+    {
+        vec2f pos = v2f(x, y) - dt * old_velocity(x, y);
+        new_velocity(x, y) = interpolate(old_velocity, pos);
     }
     old_velocity.swap(new_velocity);
 }
 
-void diffuse_density(){
-    float diffusion = dt*100.01f;
-    FOR_EACH_CELL {
+void diffuse_density()
+{
+    float diffusion = dt * 100.01f;
+    FOR_EACH_CELL
+    {
         float sum =
-            diffusion*(
-            + old_density(x - 1, y + 0)
-            + old_density(x + 1, y + 0)
-            + old_density(x + 0, y - 1)
-            + old_density(x + 0, y + 1)
-            )
-            + old_density(x + 0, y + 0);
-        new_density(x, y) = 1.0f/(1.0f + 4.0f*diffusion) * sum;
+            diffusion * (+old_density(x - 1, y + 0) + old_density(x + 1, y + 0) + old_density(x + 0, y - 1) + old_density(x + 0, y + 1)) + old_density(x + 0, y + 0);
+        new_density(x, y) = 1.0f / (1.0f + 4.0f * diffusion) * sum;
     }
     old_density.swap(new_density);
 }
 
-void diffuse_velocity(){
-    float viscosity = dt*0.000001f;
-    FOR_EACH_CELL {
+void diffuse_velocity()
+{
+    float viscosity = dt * 0.000001f;
+    FOR_EACH_CELL
+    {
         vec2f sum =
-            viscosity*(
-            + old_velocity(x - 1, y + 0)
-            + old_velocity(x + 1, y + 0)
-            + old_velocity(x + 0, y - 1)
-            + old_velocity(x + 0, y + 1)
-            )
-            + old_velocity(x + 0, y + 0);
-        new_velocity(x, y) = 1.0f/(1.0f + 4.0f*viscosity) * sum;
+            viscosity * (+old_velocity(x - 1, y + 0) + old_velocity(x + 1, y + 0) + old_velocity(x + 0, y - 1) + old_velocity(x + 0, y + 1)) + old_velocity(x + 0, y + 0);
+        new_velocity(x, y) = 1.0f / (1.0f + 4.0f * viscosity) * sum;
     }
     old_velocity.swap(new_velocity);
 }
 
-void project_velocity(){
+void project_velocity()
+{
     Grid<float> p(nx, ny);
     Grid<float> p2(nx, ny);
     Grid<float> div(nx, ny);
 
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         float dx = old_velocity(x + 1, y + 0).x - old_velocity(x - 1, y + 0).x;
         float dy = old_velocity(x + 0, y + 1).y - old_velocity(x + 0, y - 1).y;
         div(x, y) = dx + dy;
         p(x, y) = 0.0f;
     }
 
-    for (int k = 0; k < iterations; k++){
-        FOR_EACH_CELL {
-            float sum = -div(x, y)
-                + p(x + 1, y + 0)
-                + p(x - 1, y + 0)
-                + p(x + 0, y + 1)
-                + p(x + 0, y - 1);
-            p2(x, y) = 0.25f*sum;
+    for (int k = 0; k < iterations; k++)
+    {
+        FOR_EACH_CELL
+        {
+            float sum = -div(x, y) + p(x + 1, y + 0) + p(x - 1, y + 0) + p(x + 0, y + 1) + p(x + 0, y - 1);
+            p2(x, y) = 0.25f * sum;
         }
         p.swap(p2);
     }
 
-    FOR_EACH_CELL {
-        old_velocity(x, y).x -= 0.5f*(p(x + 1, y + 0) - p(x - 1, y + 0));
-        old_velocity(x, y).y -= 0.5f*(p(x + 0, y + 1) - p(x + 0, y - 1));
+    FOR_EACH_CELL
+    {
+        old_velocity(x, y).x -= 0.5f * (p(x + 1, y + 0) - p(x - 1, y + 0));
+        old_velocity(x, y).y -= 0.5f * (p(x + 0, y + 1) - p(x + 0, y - 1));
     }
 }
 
-float curl(int x, int y){
-    return
-        old_velocity(x, y + 1).x - old_velocity(x, y - 1).x +
-        old_velocity(x - 1, y).y - old_velocity(x + 1, y).y;
+float curl(int x, int y)
+{
+    return old_velocity(x, y + 1).x - old_velocity(x, y - 1).x +
+           old_velocity(x - 1, y).y - old_velocity(x + 1, y).y;
 }
 
-void vorticity_confinement(){
+void vorticity_confinement()
+{
     Grid<float> abs_curl(nx, ny);
 
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         abs_curl(x, y) = fabsf(curl(x, y));
     }
 
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         vec2f direction;
         direction.x = abs_curl(x + 0, y - 1) - abs_curl(x + 0, y + 1);
         direction.y = abs_curl(x + 1, y + 0) - abs_curl(x - 1, y + 0);
 
-        direction = vorticity/(length(direction) + 1e-5f) * direction;
+        direction = vorticity / (length(direction) + 1e-5f) * direction;
 
-        if (x < nx/2) direction *= 0.0f;
+        if (x < nx / 2)
+            direction *= 0.0f;
 
-        new_velocity(x, y) = old_velocity(x, y) + dt*curl(x, y)*direction;
+        new_velocity(x, y) = old_velocity(x, y) + dt * curl(x, y) * direction;
     }
 
     old_velocity.swap(new_velocity);
 }
 
-void add_density(int px, int py, int r = 10, float value = 0.5f){
-    for (int y = -r; y <= r; y++) for (int x = -r; x <= r; x++){
-        float d = sqrtf(x*x + y*y);
-        float u = smoothstep(float(r), 0.0f, d);
-        old_density(px + x, py + y) += u*value;
-    }
+void add_density(int px, int py, int r = 10, float value = 0.5f)
+{
+    for (int y = -r; y <= r; y++)
+        for (int x = -r; x <= r; x++)
+        {
+            float d = sqrtf(x * x + y * y);
+            float u = smoothstep(float(r), 0.0f, d);
+            old_density(px + x, py + y) += u * value;
+        }
 }
 
-float randf(float a, float b){
-    float u = rand()*(1.0f/RAND_MAX);
+float randf(float a, float b)
+{
+    float u = rand() * (1.0f / RAND_MAX);
     return lerp(a, b, u);
 }
 
-float sign(float x){
-    return
-        x > 0.0f ? +1.0f :
-        x < 0.0f ? -1.0f :
-        0.0f;
+float sign(float x)
+{
+    return x > 0.0f ? +1.0f : x < 0.0f ? -1.0f
+                                       : 0.0f;
 }
 
-void fluid_simulation_step(){
-    FOR_EACH_CELL {
-        if (x > nx*0.5f) continue;
+void fluid_simulation_step()
+{
+    FOR_EACH_CELL
+    {
+        if (x > nx * 0.5f)
+            continue;
 
         float r = 10.0f;
         old_velocity(x, y).x += randf(-r, +r);
@@ -289,24 +315,27 @@ void fluid_simulation_step(){
     }
 
     // dense regions rise up
-    FOR_EACH_CELL {
-        old_velocity(x, y).y += (old_density(x, y)*20.0f - 5.0f)*dt;
+    FOR_EACH_CELL
+    {
+        old_velocity(x, y).y += (old_density(x, y) * 20.0f - 5.0f) * dt;
     }
 
     add_density(mouse.x, mouse.y, 10, 0.5f);
 
     // fast movement is dampened
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         old_velocity(x, y) *= 0.999f;
     }
 
     // fade away
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         old_density(x, y) *= 0.99f;
     }
 
-    add_density(nx*0.25f, 30);
-    add_density(nx*0.75f, 30);
+    add_density(nx * 0.25f, 30);
+    add_density(nx * 0.75f, 30);
 
     double t[10];
 
@@ -325,15 +354,18 @@ void fluid_simulation_step(){
     t[4] = sec();
 
     // zero out stuff at bottom
-    FOR_EACH_CELL {
-        if (y < 10){
+    FOR_EACH_CELL
+    {
+        if (y < 10)
+        {
             old_density(x, y) = 0.0f;
             old_velocity(x, y) = vec2f{0.0f, 0.0f};
         }
     }
 
-    for (int i = 0; i < 4; i++){
-        t[i] = (t[i + 1] - t[i])*1000;
+    for (int i = 0; i < 4; i++)
+    {
+        t[i] = (t[i + 1] - t[i]) * 1000;
     }
 
     char title[256];
@@ -341,19 +373,22 @@ void fluid_simulation_step(){
     glutSetWindowTitle(title);
 }
 
-void screenshot(const char *path){
-    std::vector<uint32_t> rgba(w*h);
-    std::vector<uint8_t> rgb(w*h*3);
+void screenshot(const char *path)
+{
+    std::vector<uint32_t> rgba(w * h);
+    std::vector<uint8_t> rgb(w * h * 3);
 
     glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
 
     int i = 0;
-    for (int y = h - 1; y >= 0; y--) for (int x = 0; x < w; x++){
-        uint32_t c = rgba[x + y*w];
-        rgb[i++] = (c >> 0*8) & 255;
-        rgb[i++] = (c >> 1*8) & 255;
-        rgb[i++] = (c >> 2*8) & 255;
-    }
+    for (int y = h - 1; y >= 0; y--)
+        for (int x = 0; x < w; x++)
+        {
+            uint32_t c = rgba[x + y * w];
+            rgb[i++] = (c >> 0 * 8) & 255;
+            rgb[i++] = (c >> 1 * 8) & 255;
+            rgb[i++] = (c >> 2 * 8) & 255;
+        }
 
     FILE *fp = fopen(path, "wb");
     assert(fp);
@@ -362,8 +397,10 @@ void screenshot(const char *path){
     fclose(fp);
 }
 
-uint32_t swap_bytes(uint32_t x, int i, int j){
-    union {
+uint32_t swap_bytes(uint32_t x, int i, int j)
+{
+    union
+    {
         uint32_t x;
         uint8_t bytes[4];
     } u;
@@ -372,7 +409,8 @@ uint32_t swap_bytes(uint32_t x, int i, int j){
     return u.x;
 }
 
-uint32_t rgba32(uint32_t r, uint32_t g, uint32_t b, uint32_t a){
+uint32_t rgba32(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+{
     r = clamp(r, 0u, 255u);
     g = clamp(g, 0u, 255u);
     b = clamp(b, 0u, 255u);
@@ -380,11 +418,13 @@ uint32_t rgba32(uint32_t r, uint32_t g, uint32_t b, uint32_t a){
     return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
-uint32_t rgba(float r, float g, float b, float a){
-    return rgba32(r*256, g*256, b*256, a*256);
+uint32_t rgba(float r, float g, float b, float a)
+{
+    return rgba32(r * 256, g * 256, b * 256, a * 256);
 }
 
-void on_frame(){
+void on_frame()
+{
     CHECK_GL
     glClearColor(0.1f, 0.2f, 0.3f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -393,17 +433,19 @@ void on_frame(){
 
     double t = sec();
     // density field to pixels
-    FOR_EACH_CELL {
+    FOR_EACH_CELL
+    {
         float f = old_density(x, y);
-        f = log2f(f*0.25f + 1.0f);
-        float f3 = f*f*f;
-        float r = 1.5f*f;
-        float g = 1.5f*f3;
-        float b = f3*f3;
+        f = log2f(f * 0.25f + 1.0f);
+        // blue like color
+        float f3 = f * f * f;
+        float r = f3 * f3;
+        float g = f3;
+        float b = f;
         pixels(x, y) = rgba(r, g, b, 1.0);
     }
     double dt = sec() - t;
-    printf("%f\n", dt*1000);
+    //printf("%f\n", dt * 1000);
 
     // upload pixels to texture
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -411,10 +453,14 @@ void on_frame(){
 
     // draw texture
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(-1.0f, -1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex2f(+1.0f, -1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex2f(+1.0f, +1.0f);
-    glTexCoord2f(0.0f, 1.0f); glVertex2f(-1.0f, +1.0f);
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(-1.0f, -1.0f);
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(+1.0f, -1.0f);
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(+1.0f, +1.0f);
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(-1.0f, +1.0f);
     glEnd();
 
 #if 0
@@ -434,29 +480,35 @@ void on_frame(){
     CHECK_GL
 }
 
-void work(int frame){
+void work(int frame)
+{
     glutPostRedisplay();
     glutTimerFunc(20, work, frame + 1);
 }
 
-void on_move(int x, int y){
+void on_move(int x, int y)
+{
     y = h - 1 - y;
-    mouse = vec2f{x*1.0f*nx/w, y*1.0f*ny/h};
+    mouse = vec2f{x * 1.0f * nx / w, y * 1.0f * ny / h};
 }
 
-void on_mouse_button(int button, int action, int x, int y){
+void on_mouse_button(int button, int action, int x, int y)
+{
     on_move(x, y);
 
     int down = action == GLUT_DOWN;
 
-    if (button == GLUT_LEFT_BUTTON){
-        if (down){
+    if (button == GLUT_LEFT_BUTTON)
+    {
+        if (down)
+        {
             add_density(mouse.x, mouse.y, 10, 300.0f);
         }
     }
 }
 
-int main(int argc, char **argv){
+int main(int argc, char **argv)
+{
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(w, h);

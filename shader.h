@@ -6,10 +6,12 @@
 #include <vector>
 #include <cstring>
 
-bool check_shader_compile_status(GLuint obj) {
+bool check_shader_compile_status(GLuint obj)
+{
     GLint status;
     glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
-    if(status == GL_FALSE) {
+    if (status == GL_FALSE)
+    {
         GLint length;
         glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &length);
         std::vector<char> log(length);
@@ -20,10 +22,12 @@ bool check_shader_compile_status(GLuint obj) {
     return true;
 }
 
-bool check_program_link_status(GLuint obj) {
+bool check_program_link_status(GLuint obj)
+{
     GLint status;
     glGetProgramiv(obj, GL_LINK_STATUS, &status);
-    if(status == GL_FALSE) {
+    if (status == GL_FALSE)
+    {
         GLint length;
         glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &length);
         std::vector<char> log(length);
@@ -34,7 +38,8 @@ bool check_program_link_status(GLuint obj) {
     return true;
 }
 
-GLuint make_shader(const char *source, GLenum shader_type){
+GLuint make_shader(const char *source, GLenum shader_type)
+{
     GLuint shader = glCreateShader(shader_type);
     int length = strlen(source);
     glShaderSource(shader, 1, &source, &length);
@@ -43,7 +48,8 @@ GLuint make_shader(const char *source, GLenum shader_type){
     return shader;
 }
 
-GLuint make_shader_program(const char *vert_src, const char *frag_src){
+GLuint make_shader_program(const char *vert_src, const char *frag_src)
+{
     GLuint program = glCreateProgram();
 
     GLuint vert_shader = make_shader(vert_src, GL_VERTEX_SHADER);
@@ -60,25 +66,29 @@ GLuint make_shader_program(const char *vert_src, const char *frag_src){
 }
 
 #define MAX_ATTRIBUTES 5
-#define MAX_UNIFORMS   5
+#define MAX_UNIFORMS 5
 
-struct Shader {
+struct Shader
+{
     GLuint program;
     GLuint attributes[MAX_ATTRIBUTES];
     GLuint uniforms[MAX_UNIFORMS];
 
-    Shader(const char *vert_src, const char *frag_src){
+    Shader(const char *vert_src, const char *frag_src)
+    {
         program = make_shader_program(vert_src, frag_src);
 
         use();
 
-        for (int i = 0; i < MAX_UNIFORMS; i++){
+        for (int i = 0; i < MAX_UNIFORMS; i++)
+        {
             char name[4] = "u_0";
             name[2] = '0' + i;
             uniforms[i] = glGetUniformLocation(program, name);
             //printf("uniform location %i: %i\n", i, uniforms[i]);
         }
-        for (int i = 0; i < MAX_ATTRIBUTES; i++){
+        for (int i = 0; i < MAX_ATTRIBUTES; i++)
+        {
             char name[8] = "a_data0";
             name[6] = '0' + i;
             attributes[i] = glGetAttribLocation(program, name);
@@ -86,14 +96,17 @@ struct Shader {
         }
     }
 
-    void use(){
+    void use()
+    {
         glUseProgram(program);
     }
 };
 
-void check_gl(int line){
+void check_gl(int line)
+{
     int error = glGetError();
-    if (error != GL_NO_ERROR){
+    if (error != GL_NO_ERROR)
+    {
         printf("OpenGL ERROR line %i: %s\n", line, gluErrorString(error));
     }
 }
