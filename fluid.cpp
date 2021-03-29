@@ -304,15 +304,15 @@ float sign(float x)
 
 void fluid_simulation_step()
 {
-    FOR_EACH_CELL
-    {
-        if (x > nx * 0.5f)
-            continue;
+    // FOR_EACH_CELL
+    // {
+    //     if (x > nx * 0.5f)
+    //         continue;
 
-        float r = 10.0f;
-        old_velocity(x, y).x += randf(-r, +r);
-        old_velocity(x, y).y += randf(-r, +r);
-    }
+    //     float r = 10.0f;
+    //     old_velocity(x, y).x += randf(-r, +r);
+    //     old_velocity(x, y).y += randf(-r, +r);
+    // }
 
     // dense regions rise up
     FOR_EACH_CELL
@@ -320,7 +320,7 @@ void fluid_simulation_step()
         old_velocity(x, y).y += (old_density(x, y) * 20.0f - 5.0f) * dt;
     }
 
-    add_density(mouse.x, mouse.y, 10, 0.5f);
+    //add_density(mouse.x, mouse.y, 10, 0.5f);
 
     // fast movement is dampened
     FOR_EACH_CELL
@@ -334,17 +334,17 @@ void fluid_simulation_step()
         old_density(x, y) *= 0.99f;
     }
 
-    add_density(nx * 0.25f, 30);
-    add_density(nx * 0.75f, 30);
+    //add_density(nx * 0.25f, 30);
+    add_density(nx * 0.5f, 30);
 
     double t[10];
 
     t[0] = sec();
-    vorticity_confinement();
+    //vorticity_confinement();
     t[1] = sec();
     //diffuse_velocity();
     //project_velocity();
-    advect_velocity();
+    //advect_velocity();
     t[2] = sec();
     project_velocity();
     t[3] = sec();
@@ -353,15 +353,15 @@ void fluid_simulation_step()
     advect_density();
     t[4] = sec();
 
-    // zero out stuff at bottom
-    FOR_EACH_CELL
-    {
-        if (y < 10)
-        {
-            old_density(x, y) = 0.0f;
-            old_velocity(x, y) = vec2f{0.0f, 0.0f};
-        }
-    }
+    // // zero out stuff at bottom
+    // FOR_EACH_CELL
+    // {
+    //     if (y < 10)
+    //     {
+    //         old_density(x, y) = 0.0f;
+    //         old_velocity(x, y) = vec2f{0.0f, 0.0f};
+    //     }
+    // }
 
     for (int i = 0; i < 4; i++)
     {
