@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>
+#include <cstring>
 
 bool check_shader_compile_status(GLuint obj) {
     GLint status;

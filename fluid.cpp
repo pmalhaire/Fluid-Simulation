@@ -6,6 +6,7 @@
 #include <math.h>
 #include <algorithm>
 #include "vec2.h"
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
